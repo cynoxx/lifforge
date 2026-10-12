@@ -2,6 +2,12 @@
 // found in their Google Drive ("Médecine / Tutorat", "S1 Johan", "S1 Andréa").
 // Chapters marked `inferred` exist as numbered folders/files in the Drive but
 // their title could not be read from the file name: confirm them in the app.
+//
+// Histology: the "Histo" folder from last year numbers 13 chapters (épithéliums
+// split in two, cartilage before adipeux). The 2026-2027 tutorat merges the two
+// épithélium chapters, so last year's chap. N maps to this year's chap. N-1
+// from the osseux onward (chap. 13 hématopoïèse → 12). The professor's polys
+// use a third numbering ("6-face" is this year's embryology chap. 9).
 
 export interface DriveRef { label: string; id: string; folder?: boolean }
 
@@ -117,16 +123,21 @@ export const UES: UE[] = [
     chapters: [
       ch('ue5', 1, 'Méthodes d’étude', 2, [{ label: 'Chap. 1 Méthodes d’étude', id: '1U2GXmBubqMbhFOXg1AYo9qw6IG7fCU1c' }]),
       ch('ue5', 2, 'Cycle cellulaire', 2.5, [{ label: 'Chap. 2 Cycle cellulaire', id: '1smDRW3FZhx3dJwQ06W9guC6DNaYyHk-c' }]),
-      ch('ue5', 3, 'Tissus épithéliaux', 2.5, undefined, true),
+      ch('ue5', 3, 'Tissus épithéliaux (revêtement & glandulaires)', 3, [
+        { label: 'Épithéliums de revêtement (ancien chap. 3)', id: '1WEr-PwVNwzk1ii3b8gYmjwiVRUwPsgjw', folder: true },
+        { label: 'Épithéliums glandulaires (ancien chap. 4)', id: '1Ew3LdfPjtd4fnTxiDJo46a7i3VveSfBN', folder: true },
+      ]),
       ch('ue5', 4, 'Tissu conjonctif', 2.5, [{ label: 'Chap. 4 Tissu conjonctif', id: '1Rs5a0knHivCOmYUfFiS78UcwmyHIa0h8' }]),
       ch('ue5', 5, 'Tissu cartilagineux', 2, [{ label: 'Chap. 5 Tissu cartilagineux', id: '1bDOzrmi0PATwBbAjvFf4hC9vzYUAs9pA' }]),
       ch('ue5', 6, 'Tissu adipeux', 1.5, [{ label: 'Chap. 6 Tissu adipeux', id: '10ufCNiYD-1QQgSgqimu2-xF5hdPVuYKl' }]),
-      ch('ue5', 7, 'Tissu osseux', 2.5, [{ label: 'Dossier Chap7', id: '1ZOF-36s1uHpKGXHyBoi4YuVBFwfObbtv', folder: true }], true),
-      ch('ue5', 8, 'Tissu musculaire', 2.5, [{ label: 'Dossier Chap8', id: '1zTo4h5DSnbBSLdJYOxSe1E4B7rAF0roW', folder: true }], true),
-      ch('ue5', 9, 'Tissu nerveux (dont circulation du LCR)', 2.5, [{ label: 'Circulation du LCR', id: '1gG8PMbyK2CPt_210-9loIYc4ALd8exvw' }], true),
-      ch('ue5', 10, 'Chapitre 10 (à confirmer)', 2, [{ label: 'Dossier Chap10', id: '1gr7l5RcXM058GDs-mm44_Qr8D605Foii', folder: true }], true),
+      ch('ue5', 7, 'Tissu osseux & ossification', 3, [{ label: '8. Le tissu osseux (ancien chap. 8)', id: '1zTo4h5DSnbBSLdJYOxSe1E4B7rAF0roW', folder: true }]),
+      ch('ue5', 8, 'Tissu musculaire strié squelettique', 2.5, [{ label: '9. Muscle strié squelettique (ancien chap. 9)', id: '19juYTeP2KiFXTcxermC1eJvo-qpGhtUz', folder: true }]),
+      ch('ue5', 9, 'Tissu musculaire strié cardiaque', 1.5, [{ label: 'Ancien chap. 10', id: '1gr7l5RcXM058GDs-mm44_Qr8D605Foii', folder: true }]),
+      ch('ue5', 10, 'Tissu musculaire lisse', 1.5, [{ label: '11. Le muscle lisse (ancien chap. 11)', id: '1iYJv2WCB87DkgN4DKyXTHYVS2FeShrZX', folder: true }]),
       ch('ue5', 11, 'Les cellules sanguines', 2, [{ label: 'Chap. 11 Cellules sanguines', id: '17SBJWf5Tjz6P-wQ7G4X81kqilFOIYE9S' }]),
       ch('ue5', 12, 'L’hématopoïèse', 2.5, [{ label: 'Chap. 12 Hématopoïèse', id: '1TALcDVWpv-u5dRdvfURftDipSrEYRyby' }]),
+      // Not in the 2026-2027 tutorat numbering found so far, but every annale ends on it.
+      ch('ue5', 13, 'Tissu nerveux', 2.5, [{ label: 'Circulation du LCR', id: '1gG8PMbyK2CPt_210-9loIYc4ALd8exvw' }], true),
     ],
   },
   {
@@ -135,13 +146,16 @@ export const UES: UE[] = [
     chapters: [
       ch('ue6', 1, 'Généralités sur le développement & gamétogenèse', 2.5, [{ label: 'Généralités sur le développement', id: '1xRknICHreGZ6m15eUI7_KqRo2HJ5m39L' }], true),
       ch('ue6', 2, 'La fécondation', 2, [{ label: 'Chap. 2 La fécondation', id: '1zdFzuS0_rOjXQMCtjBd9W8678ragkkk8' }]),
-      ch('ue6', 3, 'Première semaine : segmentation & nidation', 2, undefined, true),
-      ch('ue6', 4, 'Deuxième semaine de développement', 2, [{ label: 'Chap. 4 Deuxième semaine', id: '1y_dDIzVphSgygKdmniq4UV1PHmoJh0Ra' }]),
-      ch('ue6', 5, 'Troisième semaine : gastrulation', 2.5, undefined, true),
-      ch('ue6', 6, 'Développement de la face', 2, [{ label: '6 — Face (poly 2025)', id: '1vH88t-IM-6ktB2tfEPSq3Nrfnu9-v4mq' }]),
-      ch('ue6', 7, 'Neurulation & délimitation de l’embryon', 2, undefined, true),
+      ch('ue6', 3, 'Première semaine : segmentation & blastocyste', 2, [{ label: 'Chap. 3 Embryo (notes)', id: '1g4LrOx9JpUF80sosJzysrDm5RkF862q3' }]),
+      ch('ue6', 4, 'Deuxième semaine : nidation & disque didermique', 2, [{ label: 'Chap. 4 Deuxième semaine', id: '1y_dDIzVphSgygKdmniq4UV1PHmoJh0Ra' }]),
+      ch('ue6', 5, 'Troisième semaine : gastrulation & disque tridermique', 2.5, undefined, true),
+      ch('ue6', 6, 'Quatrième semaine : délimitation de l’embryon & neurulation', 2, undefined, true),
+      ch('ue6', 7, 'Annexes embryonnaires & placenta', 2, undefined, true),
       ch('ue6', 8, 'Développement de l’appareil cardiovasculaire', 3, [{ label: 'Chap. 8 Cardiovasculaire', id: '1yjH8NieX9JvqMo6USmHl3lFpZ7YTyXxt' }]),
-      ch('ue6', 9, 'Développement de la région cervico-faciale', 2.5, [{ label: 'Chap. 9 Cervico-faciale', id: '14Hzja2tZnP-qCsbJ2GYlifvjAuX-R7iX' }]),
+      ch('ue6', 9, 'Développement de la région cervico-faciale', 2.5, [
+        { label: 'Chap. 9 Cervico-faciale', id: '14Hzja2tZnP-qCsbJ2GYlifvjAuX-R7iX' },
+        { label: 'Poly prof « 6 — Face » 2025', id: '1vH88t-IM-6ktB2tfEPSq3Nrfnu9-v4mq' },
+      ]),
     ],
   },
   {
