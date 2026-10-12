@@ -16,7 +16,7 @@ npm run build:artifact # page unique publiée sur claude.ai (dist-single/jarvis.
 
 | Module | Rôle |
 |---|---|
-| `src/core/curriculum.ts` | Les 8 UE et leurs chapitres, reliés aux fichiers du Google Drive (« Médecine / Tutorat », « S1 Johan », « S1 Andréa »). Les chapitres marqués `inferred` ont un titre déduit du programme : à confirmer. |
+| `src/core/curriculum.ts` | Les 8 UE et leurs chapitres, reliés aux fichiers du Google Drive (« Médecine / Tutorat », « S1 Johan », « S1 Andréa »). Les chapitres marqués `inferred` ont un titre déduit du programme : à confirmer (13 restants : Tissu nerveux, Embryo 1 et 5 à 7, Physique 2 à 4, toute la Biostats). |
 | `src/core/planner.ts` | Phases (blitz examen blanc → couverture totale → annales → affûtage → concours), projection des études chapitre par chapitre, blocage du chapitre suivant tant que le précédent n’est pas validé, révisions J1/J3/J7/J14/J30, construction de chaque journée. |
 | `src/core/sport.ts` | Split Push → Pull → Legs → Upper → Lower sur les 5 jours sans boxe ; séance ratée replacée, semaine réalignée, adaptation aux courbatures, salle bloquée le jour de l’examen blanc et pendant le concours. |
 | `src/core/srs.ts`, `seedCards.ts` | Flashcards SM-2 et banque de départ de questions rédactionnelles avec points clés (auto-correction hors-ligne). |
