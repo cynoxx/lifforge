@@ -25,9 +25,9 @@
   --fg: #f4f4f2;
   --muted: #8c8c88;
   --faint: #4a4a48;
-  --accent: #ffffff;
-  --accent-ink: #000000;
-  --accent-soft: rgba(255, 255, 255, .07);
+  --accent: #d6f23d;
+  --accent-ink: #131600;
+  --accent-soft: rgba(214, 242, 61, .1);
   --miss: #1b1b1b;
   --scrim: rgba(0, 0, 0, .7);
   --font-display: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -39,13 +39,13 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     --bg: #ffffff; --panel: #ffffff; --panel-2: #f3f3f1; --line: #e3e3e0; --line-2: #c9c9c5; --fg: #0a0a0a;
-    --muted: #6a6a66; --faint: #b4b4b0; --accent: #000000; --accent-ink: #ffffff; --accent-soft: rgba(0,0,0,.05);
+    --muted: #6a6a66; --faint: #b4b4b0; --accent: #7f9e00; --accent-ink: #ffffff; --accent-soft: rgba(127,158,0,.1);
     --miss: #ececea; --scrim: rgba(0,0,0,.35); color-scheme: light;
   }
 }
 :root[data-theme="light"] {
   --bg: #ffffff; --panel: #ffffff; --panel-2: #f3f3f1; --line: #e3e3e0; --line-2: #c9c9c5; --fg: #0a0a0a;
-  --muted: #6a6a66; --faint: #b4b4b0; --accent: #000000; --accent-ink: #ffffff; --accent-soft: rgba(0,0,0,.05);
+  --muted: #6a6a66; --faint: #b4b4b0; --accent: #7f9e00; --accent-ink: #ffffff; --accent-soft: rgba(127,158,0,.1);
   --miss: #ececea; --scrim: rgba(0,0,0,.35); color-scheme: light;
 }
 
@@ -419,6 +419,79 @@ dialog h3 { font-size: 26px; font-weight: 650; }
 .breath b { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
 .sos .timer { font-weight: 600; }
 .add-card .big { font-size: 22px; letter-spacing: -.03em; }
+/* ===== Style tableau de bord (proche de la vidéo) ===== */
+:root[data-accent="mono"] { --accent: var(--fg); --accent-ink: var(--bg); --accent-soft: rgba(127,127,127,.12); }
+:root { --panel: #0e0f10; --panel-2: #16171a; --line: #1e2023; --line-2: #33363a; --r: 14px; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --panel: #ffffff; --panel-2: #f4f4f2; --line: #e6e6e3; --line-2: #cdcdc9; } }
+:root[data-theme="light"] { --panel: #ffffff; --panel-2: #f4f4f2; --line: #e6e6e3; --line-2: #cdcdc9; }
+.card { border-radius: var(--r); padding: 16px 18px; }
+.card h2 { font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; }
+.head { margin-top: 24px; margin-bottom: 14px; }
+.head h1 { font-size: clamp(28px, 3.4vw, 38px); font-weight: 650; letter-spacing: -.04em; line-height: 1; }
+.dash-head .label { display: block; margin-bottom: 6px; }
+.label { font-family: var(--font-ui); font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.tab, .sync, .field > span, .hist summary, .mile, .bar b, .mx thead th, .row .sub, .top5 .f, .goal .gh .label { font-family: var(--font-ui); text-transform: none; letter-spacing: 0; }
+.tab { font-size: 12.5px; font-weight: 500; }
+.tab[aria-selected="true"] { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line-2); }
+.field > span { font-size: 12px; font-weight: 500; }
+.tile { display: grid; gap: 8px; align-content: start; }
+.tile-big { font-size: 28px; font-weight: 650; letter-spacing: -.04em; line-height: 1; }
+.tile-big small { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+.tile .kv { margin-top: 6px; gap: 10px 14px; }
+.tile .kv .v { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+.tile .kv .v small { font-size: 13px; }
+.tile-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tile-pct { font-size: 40px; font-weight: 650; letter-spacing: -.045em; line-height: 1; }
+.tile-ring { justify-items: center; text-align: center; }
+.tile-ring .label { justify-self: start; }
+.ring .trk { stroke: var(--line-2); opacity: .55; }
+.ring .val { stroke: var(--accent); stroke-linecap: round; }
+.ring-t { fill: var(--fg); font-family: var(--font-display); font-size: 26px; font-weight: 650; letter-spacing: -.04em; }
+.week .bars { height: 62px; margin-top: 2px; }
+.bar span { border-radius: 4px; }
+.bar span i { border-radius: 4px; background: var(--faint); }
+.bar.today span i { background: var(--accent); }
+.mx thead th { font-size: 10.5px; }
+.mx thead th.today { background: transparent; color: var(--accent); }
+.mx thead th.today .d { color: var(--accent); font-weight: 600; }
+.mx td.today { background: var(--accent-soft); }
+.c { border-radius: 6px; width: 22px; height: 22px; }
+.c.done { background: var(--accent); color: var(--accent-ink); }
+.c.miss { background: var(--miss); }
+.c.due { box-shadow: inset 0 0 0 1.5px var(--accent); }
+button.c:not(.up):not(.off):hover { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.legend span:first-child .lg { background: var(--accent) !important; }
+.legend span:nth-child(3) .lg { box-shadow: inset 0 0 0 1.5px var(--accent) !important; }
+.card.matrix-card { padding: 0; }
+@media (max-width: 560px) {
+  .tiles { grid-template-columns: 1fr 1fr; }
+  .tiles .tile:first-child, .tiles .tile-ring { grid-column: 1 / -1; }
+  .tile-row .ring { display: none; }
+  .week .bars { gap: 3px; }
+}
+.trend .ln { stroke: var(--accent); stroke-width: 2; }
+.trend .ar { fill: var(--accent); opacity: .1; }
+.trend .dot { stroke: var(--accent); }
+.row .track { height: 4px; border-radius: 4px; background: var(--miss); }
+.row .track i { background: var(--accent); border-radius: 4px; }
+.row .p, .top5 .p { font-family: var(--font-ui); font-size: 13px; font-weight: 600; letter-spacing: 0; }
+.top5 .rk { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.top5 li { padding: 10px 0; }
+.todo li.ok .tick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mile.ok { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.steps i.on { background: var(--accent); }
+.goal .gt .tl i { background: var(--accent); }
+.pick:has(input:checked) { border-color: var(--accent); }
+.pick:has(input:checked) .bx { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.days input:checked + span, .icons input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.sync[data-s="cloud"] i { background: var(--accent); border-color: var(--accent); }
+.why { border-left-color: var(--accent); }
+.hero-sum .big { font-size: 34px; }
+.ringcard .big, .week .big { font-size: 40px; }
+.goal .gh .big, .gfield .big { font-size: 24px; }
+.onb h1 { font-size: clamp(36px, 6vw, 56px); }
+.clock .days { font-size: 88px; }
+@media (max-width: 560px) { .clock .days { font-size: 72px; } .tile-pct { font-size: 36px; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 
@@ -426,8 +499,8 @@ dialog h3 { font-size: 26px; font-weight: 650; }
   <div class="wrap top-in" style="padding-bottom:12px">
     <div class="brand"><b>Lifforge<i>.</i></b><span class="label">Habitudes</span></div>
     <nav class="tabs" role="tablist" aria-label="Sections" id="tabs">
+      <button class="tab" role="tab" id="tab-habitudes" data-view="habitudes">Tableau de bord</button>
       <button class="tab" role="tab" id="tab-aujourdhui" data-view="aujourdhui">Aujourd'hui</button>
-      <button class="tab" role="tab" id="tab-habitudes" data-view="habitudes">Habitudes</button>
       <button class="tab" role="tab" id="tab-objectifs" data-view="objectifs">Objectifs</button>
       <button class="tab" role="tab" id="tab-sobriete" data-view="sobriete">Sobriété</button>
     </nav>
@@ -443,7 +516,8 @@ dialog h3 { font-size: 26px; font-weight: 650; }
         <button data-act="import">Importer une sauvegarde…</button>
         <hr>
         <button data-act="sync-now" id="sync-now" hidden>Synchroniser maintenant</button>
-        <button data-act="theme">Inverser noir / blanc</button>
+        <button data-act="accent" id="accent-btn">Passer en noir et blanc</button>
+        <button data-act="theme">Inverser clair / sombre</button>
         <hr>
         <button data-act="wipe">Tout effacer et recommencer…</button>
       </div>
@@ -729,10 +803,10 @@ function migrate(s) {
 }
 let state = (() => { try { return migrate(JSON.parse(lsGet(LS_KEY))); } catch (e) { return emptyState(); } })();
 const ui = (() => { try { return JSON.parse(lsGet(LS_UI)) || {}; } catch (e) { return {}; } })();
-const VIEWS = ['aujourdhui', 'habitudes', 'objectifs', 'sobriete'];
+const VIEWS = ['habitudes', 'aujourdhui', 'objectifs', 'sobriete'];
 const T0 = today();
 let viewY = T0.getFullYear(), viewM = T0.getMonth();
-let view = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (VIEWS.includes(ui.view) ? ui.view : 'aujourdhui');
+let view = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (VIEWS.includes(ui.view) ? ui.view : 'habitudes');
 let relapseAsk = null, editingGoal = null, autoScroll = true, chatDraft = '', dayGoalDraft = '';
 
 /* ================= Persistance et synchronisation =================
@@ -1037,9 +1111,10 @@ function soberMetrics(c, now) {
 }
 
 /* ================= Rendu commun ================= */
-function ring(p, size = 64, stroke = 2) {
+function ring(p, size = 64, stroke = 2, label) {
   const r = (size - stroke) / 2, C = 2 * Math.PI * r, off = C * (1 - Math.max(0, Math.min(1, p)));
   return '<svg class="ring" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
+    (label ? '<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" class="ring-t">' + label + '</text>' : '') +
     '<circle class="trk" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" stroke-width="' + stroke + '"/>' +
     '<circle class="val" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" stroke-width="' + stroke + '" stroke-dasharray="' + C.toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '" transform="rotate(-90 ' + size / 2 + ' ' + size / 2 + ')"/></svg>';
 }
@@ -1146,7 +1221,7 @@ function finishOnb() {
   }
   state = { ...state, profile: { name: onb.name.trim(), age: onb.age ? +onb.age : null, about: onb.about.trim(), areas: onb.areas, createdAt: tk }, goals, habits, sober, coach: { chat: [] } };
   commit(); lsDel(LS_ONB);
-  setView('aujourdhui');
+  setView('habitudes');
   toast('Bienvenue ' + state.profile.name + '. Ton plan est prêt.');
 }
 async function onbAI() {
@@ -1327,21 +1402,21 @@ function renderHabits() {
   const avg = ms.last ? (ms.done / ms.last).toFixed(1).replace('.', ',') : '0';
   const mName = MONTHS[viewM];
 
-  let html = '<section class="head"><h1>' + cap(mName) + ' <em>' + viewY + '</em></h1><span class="sp"></span><div class="monthnav">' +
+  let html = '<section class="head dash-head"><div><span class="label">Tableau de bord</span><h1>' + cap(mName) + ' <em>' + viewY + '</em></h1></div><span class="sp"></span><div class="monthnav">' +
     '<button class="btn icon" data-act="prev" aria-label="Mois précédent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>' +
     (isCur ? '' : '<button class="btn" data-act="now">Ce mois-ci</button>') +
     '<button class="btn icon" data-act="next" aria-label="Mois suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></div>' +
     '<button class="btn primary" data-act="add-habit">' + PLUS + 'Habitude</button></section>';
 
   html += '<section class="grid tiles">' +
-    '<div class="card"><span class="label">Vue du mois</span><div class="kv">' +
+    '<div class="card tile"><span class="label">Vue du mois</span><div class="tile-big">' + cap(mName) + ' <small>' + viewY + '</small></div><div class="kv">' +
       '<div><span class="label">Jours suivis</span><span class="v num">' + ms.last + '<small>/' + ms.N + '</small></span></div>' +
-      '<div><span class="label">Habitudes</span><span class="v num">' + state.habits.length + '</span></div>' +
+      '<div><span class="label">Habitudes actives</span><span class="v num">' + state.habits.length + '</span></div>' +
       '<div><span class="label">Jours parfaits</span><span class="v num">' + ms.perfect + '</span></div>' +
-      '<div><span class="label">Moy. / jour</span><span class="v num">' + avg + '</span></div></div></div>' +
-    '<div class="card ringcard">' + ring(td.s ? td.n / td.s : 0, 72) + '<div class="meta"><span class="label">Aujourd\'hui</span><span class="big num">' + pct(td.n, td.s) + P + '</span><span class="note num">' + td.n + ' sur ' + td.s + '</span></div></div>' +
-    '<div class="card week"><div class="card-h" style="margin:0"><span class="label">Cette semaine</span><span class="big num">' + pct(wn, ws) + P + '</span></div><div class="bars">' + bars + '</div></div>' +
-    '<div class="card ringcard">' + ring(ms.sched ? ms.done / ms.sched : 0, 72) + '<div class="meta"><span class="label">Régularité</span><span class="big num">' + pct(ms.done, ms.sched) + P + '</span><span class="note num">' + ms.done + ' sur ' + ms.sched + ' prévues</span></div></div>' +
+      '<div><span class="label">Moy. faites / jour</span><span class="v num">' + avg + '</span></div></div></div>' +
+    '<div class="card tile"><span class="label">Aujourd\'hui</span><div class="tile-row"><span class="tile-pct num">' + pct(td.n, td.s) + P + '</span>' + ring(td.s ? td.n / td.s : 0, 54, 5) + '</div><span class="note num">' + td.n + ' / ' + td.s + ' habitudes</span></div>' +
+    '<div class="card tile week"><span class="label">Cette semaine</span><span class="tile-pct num">' + pct(wn, ws) + P + '</span><div class="bars">' + bars + '</div></div>' +
+    '<div class="card tile tile-ring"><span class="label">Régularité du mois</span>' + ring(ms.sched ? ms.done / ms.sched : 0, 112, 8, pct(ms.done, ms.sched) + P) + '<span class="note num">' + ms.done + ' sur ' + ms.sched + ' prévues</span></div>' +
     '</section>';
 
   html += '<section class="card matrix-card"><div class="card-h"><h2>Matrice</h2><span class="label">' + mName + ' · touche une case pour cocher</span></div>';
@@ -1381,7 +1456,7 @@ function renderHabits() {
       (per.length ? '<div class="rows">' + per.map(p => '<div class="row"><span class="n">' + esc(p.h.name) + '</span><span class="p">' + p.p + P + '</span><span class="track"><i style="width:' + p.p + '%"></i></span><span class="sub">' + p.n + '/' + p.s + ' · série ' + streak(p.h) + '</span></div>').join('') + '</div>'
         : '<p class="muted" style="margin:0">Rien à analyser pour ce mois.</p>') + '</div>' +
     '<div class="card"><div class="card-h"><h2>Classement</h2><span class="label">' + mName + '</span></div>' +
-      (top.length ? '<ol class="top5">' + top.map((p, i) => '<li><span class="rk">' + (i + 1) + '</span><span class="n">' + esc(p.h.name) + '</span><span class="f">' + p.n + '/' + p.s + '</span><span class="p num">' + p.p + P + '</span></li>').join('') + '</ol>'
+      (top.length ? '<ol class="top5">' + top.map((p, i) => '<li><span class="rk">' + pad(i + 1) + '</span><span class="n">' + esc(p.h.name) + '</span><span class="f">' + p.n + '/' + p.s + '</span><span class="p num">' + p.p + P + '</span></li>').join('') + '</ol>'
         : '<p class="muted" style="margin:0">Le classement apparaîtra dès le premier jour suivi.</p>') + '</div>' +
     '</section>';
   return html;
@@ -1791,6 +1866,9 @@ document.addEventListener('click', async e => {
     case 'export': exportData(); break;
     case 'sync-now': if (remote.on) { markAll(); clearTimeout(remote.retry); remote.retry = null; remote.wait = 5000; await pushDirty(); toast(remote.dirty.size ? 'Pas de connexion pour l\'instant. Nouvel essai automatique.' : 'Tout est synchronisé.'); } break;
     case 'import': $('#import-file').click(); break;
+    case 'accent': {
+      ui.accent = ui.accent === 'mono' ? 'lime' : 'mono'; applyAccent(); lsSet(LS_UI, JSON.stringify(ui)); break;
+    }
     case 'theme': {
       const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
       const nx = cur === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = nx; ui.theme = nx; lsSet(LS_UI, JSON.stringify(ui)); break;
@@ -1833,7 +1911,13 @@ let lastDay = keyOf(today());
 setInterval(() => { const k = keyOf(today()); if (k !== lastDay) { lastDay = k; if (view !== 'sobriete' && !$('dialog[open]')) render(); } }, 60000);
 
 /* ================= Démarrage ================= */
+function applyAccent() {
+  if (ui.accent === 'mono') document.documentElement.dataset.accent = 'mono'; else delete document.documentElement.dataset.accent;
+  $('#accent-btn').textContent = ui.accent === 'mono' ? 'Passer en jaune-vert' : 'Passer en noir et blanc';
+  $('meta[name="theme-color"]') && ($('meta[name="theme-color"]').content = '#000000');
+}
 if (ui.theme) document.documentElement.dataset.theme = ui.theme;
+applyAccent();
 buildForms();
 shadow = buildShadow();
 render();
