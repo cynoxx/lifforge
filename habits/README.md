@@ -25,9 +25,19 @@ Chaque habitude a un **plan pour tenir** : déclencheur « Après…, je… », 
 
 Dans l'artifact claude.ai, le coach utilise Claude sur le compte de la personne (elle donne son accord au premier appel). En dehors de Claude (fichier `index.html` ouvert directement), les suggestions, les conseils et les aides fonctionnent sans IA, à partir d'une bibliothèque intégrée.
 
-## Données
+## Données et synchronisation
 
-Elles sont enregistrées dans le navigateur (localStorage). Dans l'artifact claude.ai, elles sont aussi synchronisées dans un document privé propre à chaque personne. Le menu ⋯ permet d'exporter ou d'importer une sauvegarde JSON, et de passer du noir au blanc.
+Toutes les données sont gardées dans le navigateur (localStorage) **et**, dans l'artifact claude.ai, synchronisées dans l'espace privé de la personne. Personne d'autre n'y a accès, même pas les gens avec qui l'artifact est partagé. L'espace contient plusieurs documents :
+
+- `core` : profil, objectifs, habitudes et leurs plans, compteurs de sobriété, suppressions
+- `chat` : conversation avec le coach
+- `log-AAAA-MM` : cases cochées d'un mois (un document par mois, pour ne jamais atteindre la taille maximale d'un document)
+
+Chaque élément porte sa date de modification et chaque case cochée un horodatage signé (+ fait, − décoché). Quand deux appareils modifient en même temps, même hors ligne, leurs changements sont **fusionnés** au lieu de s'écraser. Ce qui n'a pas pu partir reste sur l'appareil et repart au retour de la connexion, quand l'app repasse au premier plan, ou via le menu ⋯ › Synchroniser maintenant. « Tout effacer » et « Importer » se propagent aussi aux autres appareils. Les données de l'ancien format (un seul document `state`) sont migrées automatiquement.
+
+L'indicateur en haut affiche Synchronisé, Envoi…, Hors ligne · N en attente, ou Local (fichier ouvert hors de Claude : pas de synchronisation).
+
+Le menu ⋯ permet aussi d'exporter ou d'importer une sauvegarde JSON, et de passer du noir au blanc.
 
 ## Fichiers
 

@@ -408,6 +408,7 @@ textarea.in { resize: vertical; }
         <button data-act="export">Exporter une sauvegarde (.json)</button>
         <button data-act="import">Importer une sauvegarde…</button>
         <hr>
+        <button data-act="sync-now" id="sync-now" hidden>Synchroniser maintenant</button>
         <button data-act="theme">Inverser noir / blanc</button>
         <hr>
         <button data-act="wipe">Tout effacer et recommencer…</button>
@@ -683,11 +684,12 @@ function mdLite(t) {
 }
 
 /* ================= État ================= */
-function emptyState() { return { v: 2, updatedAt: Date.now(), profile: null, goals: {}, goalsLog: [], habits: [], logs: {}, sober: [], coach: { chat: [] } }; }
+function emptyState(epoch) { return { v: 3, epoch: epoch || 0, updatedAt: Date.now(), profile: null, profileU: 0, goals: {}, goalsLog: [], habits: [], logs: {}, sober: [], del: {}, chatU: 0, coach: { chat: [] } }; }
 function validState(s) { return s && typeof s === 'object' && Array.isArray(s.habits) && s.logs && typeof s.logs === 'object' && Array.isArray(s.sober); }
 function migrate(s) {
   if (!validState(s) || s.demo) return emptyState(); // les anciennes données d'exemple sont retirées
-  s.v = 2; s.goals = s.goals || {}; s.goalsLog = s.goalsLog || []; s.coach = s.coach || {}; s.coach.chat = s.coach.chat || []; s.profile = s.profile || null;
+  s.v = 3; s.epoch = s.epoch || 0; s.del = s.del || {}; s.profileU = s.profileU || 0; s.chatU = s.chatU || 0;
+  s.goals = s.goals || {}; s.goalsLog = (s.goalsLog || []).map(x => x.id ? x : { ...x, id: uid() }); s.coach = s.coach || {}; s.coach.chat = s.coach.chat || []; s.profile = s.profile || null;
   s.sober.forEach(c => { c.relapses = c.relapses || []; c.urges = c.urges || 0; });
   return s;
 }
@@ -699,31 +701,184 @@ let viewY = T0.getFullYear(), viewM = T0.getMonth();
 let view = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (VIEWS.includes(ui.view) ? ui.view : 'aujourdhui');
 let relapseAsk = null, editingGoal = null, autoScroll = true, chatDraft = '', dayGoalDraft = '';
 
-/* ================= Persistance (copie locale + document privé) ================= */
-const remote = { ref: null, writing: false, again: false, timer: null };
-function setSync(s, msg) {
-  const el = $('#sync'); el.dataset.s = s;
-  el.lastElementChild.textContent = msg || ({ cloud: 'Synchronisé', local: 'Local', offline: 'Hors ligne' })[s];
-  el.title = s === 'cloud' ? 'Tes données sont enregistrées dans ton espace privé.' : s === 'offline' ? 'Le stockage en ligne ne répond pas. Les changements restent sur cet appareil.' : 'Les données restent dans ce navigateur. Exporte une sauvegarde de temps en temps.';
+/* ================= Persistance et synchronisation =================
+   Copie complète dans le navigateur + documents privés dans l'espace de la personne :
+   data/users/<id>/core     profil, objectifs, habitudes, compteurs, suppressions
+   data/users/<id>/chat     conversation avec le coach
+   data/users/<id>/log-AAAA-MM   cases cochées du mois
+   Chaque élément porte sa date de modification (u) ; les cases cochées portent un
+   horodatage signé (+ fait, - décoché). Deux appareils fusionnent donc leurs
+   changements au lieu de s'écraser. « epoch » change quand on efface tout ou importe. */
+const canon = v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x)) ? Object.keys(x).sort().reduce((o, kk) => (o[kk] = x[kk], o), {}) : x);
+const noU = o => o == null ? 'null' : JSON.stringify(o, (k, v) => k === 'u' ? undefined : v);
+const tomb = (id, u) => { const d = state.del[id]; return !!d && d >= (u || 0); };
+function monthsOf(logs) {
+  const m = {};
+  for (const hid in logs) for (const key in logs[hid]) { const ym = key.slice(0, 7), dd = key.slice(8); ((m[ym] = m[ym] || {})[hid] = m[ym][hid] || {})[dd] = logs[hid][key]; }
+  return m;
+}
+function allKeys() { return ['core', 'chat'].concat(Object.keys(monthsOf(state.logs)).map(ym => 'log-' + ym)); }
+function docFor(key, months) {
+  if (key === 'core') return { kind: 'core', epoch: state.epoch, profile: state.profile, profileU: state.profileU || 0, goals: state.goals, goalsLog: state.goalsLog, habits: state.habits, sober: state.sober, del: state.del, daily: state.coach.daily || null, review: state.coach.review || null };
+  if (key === 'chat') return { kind: 'chat', epoch: state.epoch, chat: state.coach.chat, u: state.chatU || 0 };
+  const ym = key.slice(4);
+  return { kind: 'log', epoch: state.epoch, ym, logs: (months || monthsOf(state.logs))[ym] || {} };
+}
+function buildShadow() {
+  const sh = { h: {}, s: {}, g: {}, p: noU(state.profile), gl: state.goalsLog.map(x => x.id).join(), d: noU(state.coach.daily), r: noU(state.coach.review), chat: JSON.stringify(state.coach.chat), m: {} };
+  state.habits.forEach(h => sh.h[h.id] = noU(h));
+  state.sober.forEach(c => sh.s[c.id] = noU(c));
+  Object.keys(state.goals).forEach(k => sh.g[k] = noU(state.goals[k]));
+  const m = monthsOf(state.logs); Object.keys(m).forEach(ym => sh.m[ym] = JSON.stringify(m[ym]));
+  return sh;
+}
+let shadow = null;
+const remote = { db: null, base: null, on: false, busy: false, again: false, timer: null, retry: null, wait: 5000, dirty: new Set(), stale: new Set(), last: 0, legacy: false };
+// Repère ce qui a changé depuis la dernière fois et date chaque modification
+function stamp() {
+  const now = Date.now(), sh = shadow; let core = false;
+  const seenH = new Set(), seenS = new Set();
+  state.habits.forEach(h => { seenH.add(h.id); if (sh.h[h.id] !== noU(h)) { h.u = now; core = true; } });
+  Object.keys(sh.h).forEach(id => { if (!seenH.has(id)) { state.del[id] = now; core = true; } });
+  state.sober.forEach(c => { seenS.add(c.id); if (sh.s[c.id] !== noU(c)) { c.u = now; core = true; } });
+  Object.keys(sh.s).forEach(id => { if (!seenS.has(id)) { state.del[id] = now; core = true; } });
+  Object.keys(state.goals).forEach(k => { if (sh.g[k] !== noU(state.goals[k])) { state.goals[k].u = now; core = true; } });
+  Object.keys(sh.g).forEach(k => { if (!state.goals[k]) { state.del['g:' + k] = now; core = true; } });
+  if (sh.p !== noU(state.profile)) { state.profileU = now; core = true; }
+  if (sh.gl !== state.goalsLog.map(x => x.id).join()) core = true;
+  if (sh.d !== noU(state.coach.daily)) { if (state.coach.daily) state.coach.daily.u = now; core = true; }
+  if (sh.r !== noU(state.coach.review)) { if (state.coach.review) state.coach.review.u = now; core = true; }
+  if (sh.chat !== JSON.stringify(state.coach.chat)) { state.chatU = now; remote.dirty.add('chat'); }
+  const m = monthsOf(state.logs);
+  Object.keys(m).forEach(ym => { if (sh.m[ym] !== JSON.stringify(m[ym])) remote.dirty.add('log-' + ym); });
+  Object.keys(sh.m).forEach(ym => { if (!m[ym]) remote.dirty.add('log-' + ym); });
+  if (core) remote.dirty.add('core');
+  shadow = buildShadow();
 }
 function commit() {
   state.updatedAt = Date.now();
+  stamp();
   lsSet(LS_KEY, JSON.stringify(state));
-  if (remote.ref) { clearTimeout(remote.timer); remote.timer = setTimeout(pushRemote, 700); }
+  if (remote.on) { clearTimeout(remote.timer); remote.timer = setTimeout(pushDirty, 800); syncLabel(); }
 }
-async function pushRemote() {
-  if (!remote.ref) return;
-  if (remote.writing) { remote.again = true; return; }
-  remote.writing = true;
-  try { await remote.ref.set(JSON.parse(JSON.stringify(state))); setSync('cloud'); }
-  catch (e) {
-    if (e && e.code === 'quota_exceeded') toast('Stockage plein : exporte une sauvegarde.');
-    else if (e && ['invalid_argument', 'not_granted', 'revoked'].includes(e.code)) { remote.ref = null; setSync('local'); }
-    else setSync('offline');
+function markAll() { allKeys().forEach(k => remote.dirty.add(k)); }
+function setSync(s, msg, title) {
+  const el = $('#sync'); el.dataset.s = s;
+  el.lastElementChild.textContent = msg || ({ cloud: 'Synchronisé', local: 'Local', offline: 'Hors ligne' })[s];
+  el.title = title || (s === 'cloud' ? 'Toutes tes données sont enregistrées dans ton espace privé et disponibles sur tous tes appareils.' : s === 'offline' ? 'Le stockage en ligne ne répond pas. Tes changements sont gardés sur cet appareil et partiront dès le retour de la connexion.' : 'Les données restent dans ce navigateur. Ouvre l\'app depuis Claude pour les synchroniser entre tes appareils.');
+}
+function syncLabel() {
+  if (!remote.on) return;
+  const n = remote.dirty.size;
+  if (remote.retry) setSync('offline', 'Hors ligne' + (n ? ' · ' + n + ' en attente' : ''));
+  else if (n || remote.busy) setSync('cloud', 'Envoi…', 'Envoi de tes derniers changements.');
+  else { const d = new Date(remote.last || Date.now()); setSync('cloud', 'Synchronisé', 'Tout est enregistré dans ton espace privé. Dernière synchronisation à ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + '.'); }
+}
+function scheduleRetry() {
+  clearTimeout(remote.retry);
+  remote.retry = setTimeout(() => { remote.retry = null; pushDirty(); }, remote.wait + Math.random() * 1000);
+  remote.wait = Math.min(remote.wait * 2, 120000);
+  syncLabel();
+}
+async function pushDirty() {
+  if (!remote.on) return;
+  if (remote.busy) { remote.again = true; return; }
+  remote.busy = true; syncLabel();
+  try {
+    while (remote.dirty.size) {
+      const key = remote.dirty.values().next().value;
+      const body = JSON.parse(JSON.stringify(docFor(key)));
+      body.updatedAt = Date.now();
+      try { await remote.base.doc(key).set(body); remote.dirty.delete(key); remote.wait = 5000; }
+      catch (e) {
+        const c = e && e.code;
+        if (c === 'quota_exceeded') { toast('Ton espace de stockage en ligne est plein. Exporte une sauvegarde.'); remote.dirty.delete(key); }
+        else if (c === 'invalid_argument' || c === 'transform_error') { toast('Une partie des données n\'a pas pu être synchronisée.'); remote.dirty.delete(key); }
+        else if (['not_granted', 'revoked', 'capability_disabled', 'capability_removed'].includes(c)) { remote.on = false; setSync('local'); return; }
+        else { scheduleRetry(); return; }
+      }
+    }
+    for (const id of [...remote.stale]) { try { await remote.base.doc(id).delete(); remote.stale.delete(id); } catch (e) { break; } }
+    remote.last = Date.now();
   } finally {
-    remote.writing = false;
-    if (remote.again) { remote.again = false; pushRemote(); }
+    remote.busy = false;
+    if (remote.again) { remote.again = false; if (remote.dirty.size) setTimeout(pushDirty, 50); }
+    syncLabel();
   }
+}
+function mergeById(local, incoming) {
+  const out = local.slice(), idx = new Map(out.map((x, i) => [x.id, i]));
+  for (const r of incoming || []) {
+    if (!r || !r.id || tomb(r.id, r.u)) continue;
+    if (!idx.has(r.id)) { idx.set(r.id, out.length); out.push(r); }
+    else if ((r.u || 0) > (out[idx.get(r.id)].u || 0)) out[idx.get(r.id)] = r;
+  }
+  return out.filter(x => !tomb(x.id, x.u));
+}
+function mergeCore(r) {
+  Object.keys(r.del || {}).forEach(k => { state.del[k] = Math.max(state.del[k] || 0, r.del[k]); });
+  if ((r.profileU || 0) > (state.profileU || 0)) { state.profile = r.profile; state.profileU = r.profileU; }
+  state.habits = mergeById(state.habits, r.habits);
+  state.sober = mergeById(state.sober, r.sober);
+  const keys = new Set(Object.keys(state.goals).concat(Object.keys(r.goals || {})));
+  keys.forEach(k => {
+    const lg = state.goals[k], rg = r.goals && r.goals[k];
+    const pick = rg && (!lg || (rg.u || 0) > (lg.u || 0)) ? rg : lg;
+    if (!pick || tomb('g:' + k, pick.u)) delete state.goals[k]; else state.goals[k] = pick;
+  });
+  const ids = new Set(state.goalsLog.map(x => x.id));
+  (r.goalsLog || []).forEach(x => { if (x && x.id && !ids.has(x.id)) { state.goalsLog.push(x); ids.add(x.id); } });
+  state.goalsLog = state.goalsLog.slice(-200);
+  if (r.daily && (!state.coach.daily || (r.daily.u || 0) > (state.coach.daily.u || 0))) state.coach.daily = r.daily;
+  if (r.review && (!state.coach.review || (r.review.u || 0) > (state.coach.review.u || 0))) state.coach.review = r.review;
+}
+function mergeLog(r) {
+  const ym = r.ym, known = new Set(state.habits.map(h => h.id));
+  for (const hid in r.logs || {}) {
+    if (!known.has(hid) && state.del[hid]) continue;
+    const L = state.logs[hid] || (state.logs[hid] = {});
+    for (const dd in r.logs[hid]) { const k = ym + '-' + dd, v = r.logs[hid][dd], lv = L[k]; if (typeof v === 'number' && (lv === undefined || Math.abs(v) > Math.abs(lv))) L[k] = v; }
+  }
+}
+function mergeChat(r) { if ((r.u || 0) > (state.chatU || 0)) { state.coach.chat = Array.isArray(r.chat) ? r.chat : []; state.chatU = r.u; } }
+function onRemote(qs) {
+  const docs = {};
+  qs.docs.forEach(d => { if (d.exists) docs[d.id] = d.data(); });
+  const before = canon(state);
+  // ancienne version : un seul document « state »
+  if (docs.state && !docs.core && validState(docs.state)) {
+    const old = migrate(JSON.parse(JSON.stringify(docs.state)));
+    const m = monthsOf(old.logs);
+    docs.core = { kind: 'core', epoch: 0, profile: old.profile, profileU: old.profile ? 1 : 0, goals: old.goals, goalsLog: old.goalsLog, habits: old.habits, sober: old.sober, del: {}, daily: old.coach.daily || null, review: old.coach.review || null };
+    docs.chat = { kind: 'chat', epoch: 0, chat: old.coach.chat, u: 1 };
+    Object.keys(m).forEach(ym => { docs['log-' + ym] = { kind: 'log', epoch: 0, ym, logs: m[ym] }; });
+    remote.stale.add('state'); remote.legacy = true;
+  } else if (docs.state) remote.stale.add('state');
+  delete docs.state;
+  const ids = Object.keys(docs);
+  if (!ids.length) {
+    if (!qs.metadata.fromCache && (state.profile || state.habits.length || state.epoch)) { markAll(); pushDirty(); }
+    return;
+  }
+  const rEpoch = Math.max(...ids.map(id => docs[id].epoch || 0));
+  if (rEpoch > state.epoch) { state = emptyState(rEpoch); }
+  const same = ids.filter(id => (docs[id].epoch || 0) === state.epoch);
+  ids.filter(id => (docs[id].epoch || 0) < state.epoch).forEach(id => remote.stale.add(id));
+  if (docs.core && same.includes('core')) mergeCore(docs.core);
+  if (docs.chat && same.includes('chat')) mergeChat(docs.chat);
+  same.filter(id => id.startsWith('log-')).forEach(id => mergeLog(docs[id]));
+  // pousse ce que le serveur n'a pas encore
+  const months = monthsOf(state.logs);
+  allKeys().forEach(key => {
+    const r = docs[key];
+    if (!r || (r.epoch || 0) !== state.epoch) { remote.dirty.add(key); return; }
+    const mine = docFor(key, months); const theirs = Object.assign({}, r); delete theirs.updatedAt;
+    if (canon(JSON.parse(JSON.stringify(mine))) !== canon(theirs)) remote.dirty.add(key);
+  });
+  shadow = buildShadow();
+  lsSet(LS_KEY, JSON.stringify(state));
+  if (canon(state) !== before) safeRender();
+  if (remote.dirty.size || remote.stale.size) pushDirty(); else syncLabel();
 }
 async function initRemote() {
   if (!window.claude || typeof window.claude.use !== 'function') return;
@@ -732,24 +887,25 @@ async function initRemote() {
   if (!db || !user) return;
   const id = await user.id();
   if (!id) return;
-  try { remote.ref = db.doc('data/users/' + id + '/state'); } catch (e) { return; }
-  setSync('local', 'Connexion…');
+  try { remote.base = db.collection('data/users/' + id); } catch (e) { return; }
+  remote.on = true; remote.last = 0;
+  setSync('local', 'Connexion…', 'Connexion à ton espace privé…');
   let settled = false;
-  const slow = setTimeout(() => { if (!settled) setSync('offline'); }, 10000);
-  remote.ref.onSnapshot(snap => {
-    if (!snap.metadata.fromCache) { settled = true; clearTimeout(slow); setSync('cloud'); }
-    if (snap.exists) {
-      const d = snap.data();
-      if (validState(d) && !d.demo && (d.updatedAt || 0) > (state.updatedAt || 0) && !snap.metadata.hasPendingWrites) {
-        state = migrate(JSON.parse(JSON.stringify(d)));
-        lsSet(LS_KEY, JSON.stringify(state));
-        render();
-      }
-    } else if (!snap.metadata.fromCache && state.profile) {
-      pushRemote();
-    }
-  }, () => { settled = true; clearTimeout(slow); remote.ref = null; setSync('local'); });
+  const slow = setTimeout(() => { if (!settled) setSync('offline', 'Hors ligne'); }, 10000);
+  remote.base.onSnapshot(qs => {
+    if (!qs.metadata.fromCache && !settled) { settled = true; clearTimeout(slow); remote.last = Date.now(); }
+    try { onRemote(qs); } catch (e) { console.error(e); }
+    if (settled) syncLabel();
+  }, () => { settled = true; clearTimeout(slow); remote.on = false; setSync('local'); });
 }
+// Envoie tout de suite quand l'app passe en arrière-plan, reprend au retour
+document.addEventListener('visibilitychange', () => { if (remote.on && remote.dirty.size) { clearTimeout(remote.timer); clearTimeout(remote.retry); remote.retry = null; pushDirty(); } });
+window.addEventListener('online', () => { if (remote.on && remote.dirty.size) { clearTimeout(remote.retry); remote.retry = null; remote.wait = 5000; pushDirty(); } });
+// Ne pas couper une saisie en cours quand des données arrivent d'un autre appareil
+let pendingRender = false;
+function typing() { const a = document.activeElement; return !!(a && $('#app').contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); }
+function safeRender() { if (typing()) { pendingRender = true; return; } render(); }
+document.addEventListener('focusout', () => setTimeout(() => { if (pendingRender && !typing()) { pendingRender = false; render(); } }, 0));
 
 /* ================= Coach IA ================= */
 let sampleFn = null, aiStatus = (window.claude && typeof window.claude.use === 'function') ? 'pending' : 'off';
@@ -799,7 +955,7 @@ const COACH_RULES = () => 'Tu es le coach d\'habitudes de ' + (state.profile ? s
 
 /* ================= Calculs ================= */
 function isSched(h, d, k) { return h.days.includes(wdOf(d)) && k >= h.createdAt; }
-function isDone(h, k) { return !!(state.logs[h.id] && state.logs[h.id][k]); }
+function isDone(h, k) { return !!(state.logs[h.id] && state.logs[h.id][k] > 0); }
 function dayStats(d) {
   const k = keyOf(d); let s = 0, n = 0;
   for (const h of state.habits) if (isSched(h, d, k)) { s++; if (isDone(h, k)) n++; }
@@ -1249,7 +1405,7 @@ function renderGoals() {
     state.goalsLog.slice().reverse().slice(0, 30).map(x => '<div class="row"><span class="n">' + esc(x.text) + '</span><span class="p">' + (x.done ? 'atteint' : 'non atteint') + '</span><span class="sub">' + esc((HZ.find(h => h.k === x.k) || {}).l || '') + ' · ' + fmtShort(fromKey(x.start)) + '</span></div>').join('') + '</div></section>';
   return html;
 }
-function archiveGoal(k) { const g = state.goals[k]; if (g && g.text) state.goalsLog.push({ k, text: g.text, start: g.start, done: !!g.done }); state.goalsLog = state.goalsLog.slice(-200); }
+function archiveGoal(k) { const g = state.goals[k]; if (g && g.text) state.goalsLog.push({ id: uid(), k, text: g.text, start: g.start, done: !!g.done }); state.goalsLog = state.goalsLog.slice(-200); }
 async function aiReview() {
   if (!aiOn() || reviewBusy) return;
   reviewBusy = true; render();
@@ -1398,7 +1554,7 @@ async function habitAdvice() {
   try {
     const { text } = await sampleFn(COACH_RULES() + '\n\nDonne 4 conseils concrets et personnalisés pour tenir l\'habitude « ' + d.name + ' » (' + daysLabel(d.days) + (d.cue ? ', déclencheur : ' + d.cue : '') + (d.mini ? ', version mini : ' + d.mini : '') + '). Tiens compte de ses chiffres et de son profil. Uniquement 4 puces « - » courtes, sans introduction.',
       { cache: false, signal: adviceCtl.signal, onText: ({ text }) => { adv.innerHTML = mdLite(text); } });
-    if (editingHabit) { editingHabit.advice = text; commit(); }
+    const cur = editingHabit && state.habits.find(x => x.id === editingHabit.id); if (cur) { cur.advice = text; commit(); }
   } catch (e) { const m = aiErr(e); adv.innerHTML = mdLite(offlineTips(d)) + (m ? '<p class="note">' + esc(m) + '</p>' : ''); }
   adviceCtl = null; btn.disabled = false;
 }
@@ -1428,7 +1584,7 @@ $('#form-habit').addEventListener('submit', e => {
   const err = !d.name ? 'Donne un nom à ton habitude.' : !d.days.length ? 'Choisis au moins un jour.' : '';
   if (err) { $('#h-err').textContent = err; $('#h-err').hidden = false; return; }
   const was = !!editingHabit;
-  if (editingHabit) Object.assign(editingHabit, d);
+  if (editingHabit) { const cur = state.habits.find(x => x.id === editingHabit.id); if (cur) Object.assign(cur, d); }
   else state.habits.push({ id: uid(), createdAt: keyOf(today()), ...d });
   commit(); $('#dlg-habit').close(); render(); toast(was ? 'Habitude enregistrée' : 'Habitude ajoutée');
 });
@@ -1440,7 +1596,7 @@ $('#h-presets').addEventListener('click', e => {
 $('#h-del').addEventListener('click', () => { $('#h-del-confirm').hidden = false; });
 $('#h-del-no').addEventListener('click', () => { $('#h-del-confirm').hidden = true; });
 $('#h-del-yes').addEventListener('click', () => {
-  state.habits = state.habits.filter(h => h !== editingHabit); delete state.logs[editingHabit.id];
+  state.habits = state.habits.filter(h => h.id !== editingHabit.id); delete state.logs[editingHabit.id];
   commit(); $('#dlg-habit').close(); render(); toast('Habitude supprimée');
 });
 
@@ -1463,13 +1619,13 @@ $('#form-sober').addEventListener('submit', e => {
   const err = !name ? 'Indique de quoi tu te libères.' : (!start || isNaN(start)) ? 'Choisis une date de départ.' : start.getTime() > Date.now() + 60000 ? 'La date de départ ne peut pas être dans le futur.' : '';
   if (err) { $('#s-err').textContent = err; $('#s-err').hidden = false; return; }
   const was = !!editingSober;
-  if (editingSober) Object.assign(editingSober, { name, start: start.toISOString(), cost, why });
+  if (editingSober) { const cur = state.sober.find(x => x.id === editingSober.id); if (cur) Object.assign(cur, { name, start: start.toISOString(), cost, why }); }
   else state.sober.push({ id: uid(), name, start: start.toISOString(), cost, why, relapses: [], urges: 0 });
   commit(); $('#dlg-sober').close(); render(); toast(was ? 'Compteur modifié' : 'Compteur lancé');
 });
 $('#s-del').addEventListener('click', () => { $('#s-del-confirm').hidden = false; });
 $('#s-del-no').addEventListener('click', () => { $('#s-del-confirm').hidden = true; });
-$('#s-del-yes').addEventListener('click', () => { state.sober = state.sober.filter(s => s !== editingSober); commit(); $('#dlg-sober').close(); render(); toast('Compteur supprimé'); });
+$('#s-del-yes').addEventListener('click', () => { state.sober = state.sober.filter(s => s.id !== editingSober.id); commit(); $('#dlg-sober').close(); render(); toast('Compteur supprimé'); });
 
 let profAreas = [];
 function openProfile() {
@@ -1543,14 +1699,14 @@ document.addEventListener('click', async e => {
     /* habitudes */
     case 'toggle': {
       const L = state.logs[id] || (state.logs[id] = {});
-      if (L[k]) delete L[k]; else L[k] = 1;
+      L[k] = L[k] > 0 ? -Date.now() : Date.now(); // horodatage signé : fusion fiable entre appareils
       commit();
       const sx = ($('#mx-scroll') || {}).scrollLeft || 0, y = window.scrollY;
       render(); window.scrollTo({ top: y });
       const sc = $('#mx-scroll'); if (sc) sc.scrollLeft = sx;
       const nb = $('[data-act="toggle"][data-id="' + id + '"][data-k="' + k + '"]');
-      if (nb) { nb.focus({ preventScroll: true }); if (L[k]) nb.classList.add('pop'); }
-      if (L[k]) { const t = today(), td = dayStats(t); if (k === keyOf(t) && td.s && td.n === td.s) toast('Journée complète. Bravo ' + state.profile.name + '.'); }
+      if (nb) { nb.focus({ preventScroll: true }); if (L[k] > 0) nb.classList.add('pop'); }
+      if (L[k] > 0) { const t = today(), td = dayStats(t); if (k === keyOf(t) && td.s && td.n === td.s) toast('Journée complète. Bravo ' + state.profile.name + '.'); }
       break;
     }
     case 'prev': autoScroll = true; viewM--; if (viewM < 0) { viewM = 11; viewY--; } render(); break;
@@ -1599,6 +1755,7 @@ document.addEventListener('click', async e => {
     /* menu */
     case 'profile': openProfile(); break;
     case 'export': exportData(); break;
+    case 'sync-now': if (remote.on) { markAll(); clearTimeout(remote.retry); remote.retry = null; remote.wait = 5000; await pushDirty(); toast(remote.dirty.size ? 'Pas de connexion pour l\'instant. Nouvel essai automatique.' : 'Tout est synchronisé.'); } break;
     case 'import': $('#import-file').click(); break;
     case 'theme': {
       const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
@@ -1606,14 +1763,14 @@ document.addEventListener('click', async e => {
     }
     case 'wipe':
       if (await askConfirm('Tout effacer ?', 'Profil, objectifs, habitudes, historique et compteurs seront supprimés, puis l\'accueil recommencera. Exporte une sauvegarde avant si tu veux les garder.', 'Tout effacer')) {
-        state = emptyState(); commit(); lsDel(LS_ONB);
+        state = emptyState(Date.now()); shadow = buildShadow(); markAll(); commit(); lsDel(LS_ONB);
         onb = { step: 0, name: '', age: '', about: '', areas: [], goals: {}, picks: [], soberOn: false, sober: { name: '', date: keyOf(today()), time: '', cost: '', why: '' } };
         render(); window.scrollTo({ top: 0 });
       }
       break;
   }
 });
-$('#menu-btn').addEventListener('click', e => { e.stopPropagation(); const m = $('#menu'); m.hidden = !m.hidden; $('#menu-btn').setAttribute('aria-expanded', String(!m.hidden)); });
+$('#menu-btn').addEventListener('click', e => { e.stopPropagation(); const m = $('#menu'); $('#sync-now').hidden = !remote.on; m.hidden = !m.hidden; $('#menu-btn').setAttribute('aria-expanded', String(!m.hidden)); });
 
 async function exportData() {
   const data = JSON.stringify(state, null, 2), filename = 'lifforge-habitudes-' + keyOf(today()) + '.json';
@@ -1631,7 +1788,7 @@ $('#import-file').addEventListener('change', async e => {
     const s = JSON.parse(await f.text());
     if (!validState(s)) throw new Error('format');
     if (!await askConfirm('Importer cette sauvegarde ?', 'Elle contient ' + s.habits.length + ' habitude(s) et ' + s.sober.length + ' compteur(s). Tes données actuelles seront remplacées.', 'Importer')) return;
-    state = migrate(s); commit(); render(); toast('Sauvegarde importée');
+    state = migrate(s); state.epoch = Date.now(); shadow = buildShadow(); markAll(); commit(); render(); toast('Sauvegarde importée');
   } catch (err) { toast('Ce fichier n\'est pas une sauvegarde Lifforge valide.'); }
 });
 
@@ -1644,6 +1801,7 @@ setInterval(() => { const k = keyOf(today()); if (k !== lastDay) { lastDay = k; 
 /* ================= Démarrage ================= */
 if (ui.theme) document.documentElement.dataset.theme = ui.theme;
 buildForms();
+shadow = buildShadow();
 render();
 setSync('local');
 initRemote();
