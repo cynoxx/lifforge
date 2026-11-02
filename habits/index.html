@@ -13,9 +13,9 @@
 <meta name="theme-color" content="#000000">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap">
 <style>
-/* Layout : monochrome éditorial — grands chiffres à empattements, étiquettes mono, filets fins. Noir d'abord, blanc en thème clair. */
+/* Layout : monochrome éditorial — grosse grotesque serrée pour titres et chiffres, étiquettes mono, filets fins. Noir d'abord, blanc en thème clair. */
 :root {
   --bg: #000000;
   --panel: #0a0a0a;
@@ -30,7 +30,7 @@
   --accent-soft: rgba(255, 255, 255, .07);
   --miss: #1b1b1b;
   --scrim: rgba(0, 0, 0, .7);
-  --font-display: "Instrument Serif", "Times New Roman", Georgia, serif;
+  --font-display: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-ui: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --r: 6px;
@@ -395,6 +395,30 @@ textarea.in { resize: vertical; }
   .mx .hn { min-width: 140px; max-width: 150px; padding-left: 12px; }
   .ringcard .big, .week .big { font-size: 46px; }
 }
+/* Typographie d'affichage : grotesque grasse, approche serrée, pas d'italique */
+.serif, .big, .head h1, .onb h1, dialog h3, .brand b, .kv .v, .quote, .empty b, .goal .gh .big, .gfield .big,
+.sc-top h2, .clock .days, .stats3 .v, .top5 .p, .top5 .rk, .aid .k, .todo .st b, .why, .sos .timer, .breath b, .add-card .big {
+  font-family: var(--font-display); font-style: normal; font-weight: 650; letter-spacing: -.045em;
+}
+.head h1, .onb h1 { font-weight: 700; letter-spacing: -.055em; line-height: .9; }
+.head h1 em, .onb h1 em, .brand b i, .clock .days small { font-style: normal; color: var(--muted); }
+.brand b { font-size: 20px; font-weight: 700; letter-spacing: -.04em; }
+.big, .kv .v, .stats3 .v, .todo .st b, .top5 .p { font-weight: 600; }
+.ringcard .big, .week .big { font-size: 46px; }
+.hero-sum .big { font-size: 40px; }
+.kv .v { font-size: 28px; }
+.clock .days { font-weight: 700; letter-spacing: -.06em; }
+.clock .days small { font-size: 22px; font-weight: 500; letter-spacing: -.02em; }
+.quote { font-size: 21px; font-weight: 500; letter-spacing: -.025em; line-height: 1.3; }
+.quote.small { font-size: 18px; }
+.why { font-size: 17px; font-weight: 500; letter-spacing: -.02em; line-height: 1.35; }
+.top5 .rk, .aid .k { font-family: var(--font-mono); font-size: 12px; font-weight: 400; letter-spacing: 0; line-height: 1.6; }
+.sc-top h2 { font-size: 26px; }
+dialog h3 { font-size: 26px; font-weight: 650; }
+.goal .gh .big, .gfield .big { font-size: 28px; }
+.breath b { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+.sos .timer { font-weight: 600; }
+.add-card .big { font-size: 22px; letter-spacing: -.03em; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 
