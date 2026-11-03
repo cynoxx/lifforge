@@ -14,7 +14,7 @@ L'app part de zéro et pose les questions dans l'ordre :
 
 ## Vues
 
-- **Aujourd'hui** : liste du jour à cocher (déclencheur et version minimale sous chaque habitude), objectif du jour, aides automatiques (« ne manque jamais deux fois », habitude qui coince, déclencheur manquant, paliers de série), mot du coach et discussion avec le coach.
+- **Aujourd'hui** : to-do du jour (tâches pour aujourd'hui ou demain, prioritaires, report des tâches non faites), liste des habitudes du jour à cocher (déclencheur et version minimale sous chaque habitude), objectif du jour, aides automatiques (« ne manque jamais deux fois », habitude qui coince, déclencheur manquant, paliers de série), mot du coach et discussion avec le coach.
 - **Habitudes** : matrice du mois, % du jour / de la semaine / du mois, courbe de régularité, analyse par habitude, classement.
 - **Objectifs** : chaque horizon avec son échéance, le temps écoulé, les habitudes reliées, « Atteint », « Relancer », historique, bilan du coach.
 - **Sobriété** : compteur en direct, paliers, économies, record, rechutes. Le bouton « J'ai une envie » ouvre une aide d'urgence (respiration guidée, minuteur de 10 minutes, ta raison, idées concrètes, lignes d'écoute).
